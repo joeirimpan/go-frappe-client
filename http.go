@@ -1,6 +1,7 @@
 package frappe
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 // HTTPClient represents an HTTP client.
 type HTTPClient interface {
 	Do(method, rURL string, params url.Values, headers http.Header) (HTTPResponse, error)
+	DoJSON(method, rURL string, params url.Values, headers http.Header, obj interface{}) (HTTPResponse, error)
 	GetClient() *httpClient
 }
 
@@ -114,6 +116,22 @@ func (h *httpClient) Do(method, rURL string, params url.Values, headers http.Hea
 	resp.Body = body
 	if h.debug {
 		h.hLog.Printf("%s %s -- %d %v", method, req.URL.RequestURI(), resp.Response.StatusCode, req.Header)
+	}
+
+	return resp, nil
+}
+
+// DoJSON makes an HTTP request and parses the JSON response.
+func (h *httpClient) DoJSON(method, url string, params url.Values, headers http.Header, obj interface{}) (HTTPResponse, error) {
+	resp, err := h.Do(method, url, params, headers)
+	if err != nil {
+		return resp, err
+	}
+
+	// We now unmarshal the body.
+	if err := json.Unmarshal(resp.Body, &obj); err != nil {
+		h.hLog.Printf("Error parsing JSON response: %v | %s", err, resp.Body)
+		return resp, errors.New("error parsing response")
 	}
 
 	return resp, nil

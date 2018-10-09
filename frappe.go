@@ -65,22 +65,23 @@ func (c *Client) SetHTTPClient(h *http.Client) {
 	c.httpClient = NewHTTPClient(h, nil, c.debug)
 }
 
-// Post proxy underlying http client post request
-func (c *Client) Post(url string, params url.Values, headers http.Header) (HTTPResponse, error) {
+// Do proxy underlying http client do request
+func (c *Client) Do(httpMethod, frappeMethod string, params url.Values, headers http.Header) (HTTPResponse, error) {
 	return c.httpClient.Do(
-		http.MethodPost,
-		c.baseURI+"api/method/"+url,
+		httpMethod,
+		c.baseURI+"api/method/"+frappeMethod,
 		params,
 		headers,
 	)
 }
 
-// Get proxy underlying http client get request
-func (c *Client) Get(url string, params url.Values, headers http.Header) (HTTPResponse, error) {
-	return c.httpClient.Do(
-		http.MethodGet,
-		c.baseURI+"api/method/"+url,
+// DoJSON proxy underlying http client doJSON request
+func (c *Client) DoJSON(httpMethod, frappeMethod string, params url.Values, headers http.Header, obj interface{}) (HTTPResponse, error) {
+	return c.httpClient.DoJSON(
+		httpMethod,
+		c.baseURI+"api/method/"+frappeMethod,
 		params,
 		headers,
+		obj,
 	)
 }
