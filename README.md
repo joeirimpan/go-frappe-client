@@ -7,6 +7,37 @@
 
 ## Usage
 
+## Authentication
+
+### Login authentication
+```golang
+auth := LoginAuth{
+	userName: "username",
+	password: "password",
+}
+frappeClient, _ := frappe.New("http://localhost:5001/", &auth, true)
+```
+
+### Basic authentication
+```golang
+auth := BasicAuth{
+	apiKey: "api_key",
+	apiSecret: "api_secret",
+}
+frappeClient, _ := frappe.New("http://localhost:5001/", &auth, true)
+```
+
+### Token authentication
+```golang
+auth := TokenAuth{
+	apiKey: "api_key",
+	apiSecret: "api_secret",
+}
+frappeClient, _ := frappe.New("http://localhost:5001/", &auth, true)
+```
+
+## Sample program
+
 ```golang
 package main
 
@@ -25,7 +56,11 @@ type SampleResp struct {
 }
 
 func main() {
-	frappeClient, _ := frappe.New("http://localhost:5001/", "username", "password", true)
+	auth := LoginAuth{
+		userName: "username",
+		password: "password",
+	}
+	frappeClient, _ := frappe.New("http://localhost:5001/", &auth, true)
 
 	// Creating a post request
 	s := SampleResp{}
