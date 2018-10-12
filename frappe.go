@@ -1,6 +1,8 @@
 package frappe
 
 import (
+	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -12,19 +14,39 @@ const requestTimeout time.Duration = 7000 * time.Millisecond
 // Client refers to frappe client
 type Client struct {
 	baseURI    string
-	userName   string
-	password   string
+	auth       Auth
+	authHeader *string
 	debug      bool
 	httpClient HTTPClient
 }
 
+// Auth generic auth interface
+type Auth interface{}
+
+// LoginAuth performs normal login flow
+type LoginAuth struct {
+	userName string
+	password string
+}
+
+// BasicAuth sends base64 encoded auth header
+type BasicAuth struct {
+	apiKey    string
+	apiSecret string
+}
+
+// TokenAuth sends token formed from apiKey and apiSecret
+type TokenAuth struct {
+	apiKey    string
+	apiSecret string
+}
+
 // New creates a new frappe client.
-func New(baseURI, userName, password string, debug bool) (*Client, error) {
+func New(baseURI string, auth Auth, debug bool) (*Client, error) {
 	client := &Client{
-		baseURI:  baseURI,
-		userName: userName,
-		password: password,
-		debug:    debug,
+		baseURI: baseURI,
+		auth:    auth,
+		debug:   debug,
 	}
 	cookieJar, err := cookiejar.New(nil)
 	if err != nil {
@@ -37,10 +59,20 @@ func New(baseURI, userName, password string, debug bool) (*Client, error) {
 		Jar:     cookieJar,
 	})
 
-	// Do login auth which sets the cookies in the jar
-	err = client.Login()
-	if err != nil {
-		return nil, err
+	switch a := auth.(type) {
+	case *LoginAuth:
+		// Do login auth which sets the cookies in the jar
+		err = client.Login()
+		if err != nil {
+			return nil, err
+		}
+	case *BasicAuth:
+		tk := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", a.apiKey, a.apiSecret)))
+		basicTk := fmt.Sprintf("Basic %s", tk)
+		client.authHeader = &basicTk
+	case *TokenAuth:
+		tk := fmt.Sprintf("token %s:%s", a.apiKey, a.apiSecret)
+		client.authHeader = &tk
 	}
 
 	return client, nil
@@ -48,10 +80,14 @@ func New(baseURI, userName, password string, debug bool) (*Client, error) {
 
 // Login performs a login request and sets the cookies
 func (c *Client) Login() error {
-	loginParams := url.Values{}
+	var (
+		auth        = c.auth.(*LoginAuth)
+		loginParams = url.Values{}
+	)
+
 	loginParams.Set("cmd", "login")
-	loginParams.Set("usr", c.userName)
-	loginParams.Set("pwd", c.password)
+	loginParams.Set("usr", auth.userName)
+	loginParams.Set("pwd", auth.password)
 	_, err := c.httpClient.Do(http.MethodPost, c.baseURI, loginParams, nil)
 	if err != nil {
 		return err
@@ -67,6 +103,14 @@ func (c *Client) SetHTTPClient(h *http.Client) {
 
 // Do proxy underlying http client do request
 func (c *Client) Do(httpMethod, frappeMethod string, params url.Values, headers http.Header) (HTTPResponse, error) {
+	// Set custom headers
+	if c.authHeader != nil {
+		if headers == nil {
+			headers = make(http.Header)
+		}
+		headers.Set("Authorization", *c.authHeader)
+	}
+
 	return c.httpClient.Do(
 		httpMethod,
 		c.baseURI+"api/method/"+frappeMethod,
@@ -77,6 +121,14 @@ func (c *Client) Do(httpMethod, frappeMethod string, params url.Values, headers 
 
 // DoJSON proxy underlying http client doJSON request
 func (c *Client) DoJSON(httpMethod, frappeMethod string, params url.Values, headers http.Header, obj interface{}) (HTTPResponse, error) {
+	// Set custom headers
+	if c.authHeader != nil {
+		if headers == nil {
+			headers = make(http.Header)
+		}
+		headers.Set("Authorization", *c.authHeader)
+	}
+
 	return c.httpClient.DoJSON(
 		httpMethod,
 		c.baseURI+"api/method/"+frappeMethod,
