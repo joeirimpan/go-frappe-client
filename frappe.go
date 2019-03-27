@@ -25,20 +25,20 @@ type Auth interface{}
 
 // LoginAuth performs normal login flow
 type LoginAuth struct {
-	userName string
-	password string
+	UserName string
+	Password string
 }
 
 // BasicAuth sends base64 encoded auth header
 type BasicAuth struct {
-	apiKey    string
-	apiSecret string
+	APIKey    string
+	APISecret string
 }
 
 // TokenAuth sends token formed from apiKey and apiSecret
 type TokenAuth struct {
-	apiKey    string
-	apiSecret string
+	APIKey    string
+	APISecret string
 }
 
 // New creates a new frappe client.
@@ -67,11 +67,11 @@ func New(baseURI string, auth Auth, debug bool) (*Client, error) {
 			return nil, err
 		}
 	case *BasicAuth:
-		tk := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", a.apiKey, a.apiSecret)))
+		tk := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", a.APIKey, a.APISecret)))
 		basicTk := fmt.Sprintf("Basic %s", tk)
 		client.authHeader = &basicTk
 	case *TokenAuth:
-		tk := fmt.Sprintf("token %s:%s", a.apiKey, a.apiSecret)
+		tk := fmt.Sprintf("token %s:%s", a.APIKey, a.APISecret)
 		client.authHeader = &tk
 	}
 
@@ -86,8 +86,8 @@ func (c *Client) Login() error {
 	)
 
 	loginParams.Set("cmd", "login")
-	loginParams.Set("usr", auth.userName)
-	loginParams.Set("pwd", auth.password)
+	loginParams.Set("usr", auth.UserName)
+	loginParams.Set("pwd", auth.Password)
 	_, err := c.httpClient.Do(http.MethodPost, c.baseURI, loginParams, nil)
 	if err != nil {
 		return err

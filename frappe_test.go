@@ -15,8 +15,8 @@ type SampleResp struct {
 
 func TestFrappeClient(t *testing.T) {
 	auth := LoginAuth{
-		userName: "username",
-		password: "password",
+		UserName: "username",
+		Password: "password",
 	}
 	frappeClient, _ := New("http://localhost:5001/", &auth, true)
 
