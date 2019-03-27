@@ -1,6 +1,7 @@
 package frappe
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -9,13 +10,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 )
 
 // HTTPClient represents an HTTP client.
 type HTTPClient interface {
 	Do(method, rURL string, params url.Values, headers http.Header) (HTTPResponse, error)
+	DoRaw(method, rURL string, reqBody []byte, headers http.Header) (HTTPResponse, error)
 	DoJSON(method, rURL string, params url.Values, headers http.Header, obj interface{}) (HTTPResponse, error)
 	GetClient() *httpClient
 }
@@ -58,23 +59,19 @@ func NewHTTPClient(h *http.Client, hLog *log.Logger, debug bool) HTTPClient {
 }
 
 // Do executes an HTTP request and returns the response.
-func (h *httpClient) Do(method, rURL string, params url.Values, headers http.Header) (HTTPResponse, error) {
+func (h *httpClient) DoRaw(method, rURL string, reqBody []byte, headers http.Header) (HTTPResponse, error) {
 	var (
-		resp       = HTTPResponse{}
-		postParams io.Reader
-		err        error
+		resp     = HTTPResponse{}
+		err      error
+		postBody io.Reader
 	)
-
-	if params == nil {
-		params = url.Values{}
-	}
 
 	// Encode POST / PUT params.
 	if method == http.MethodPost || method == http.MethodPut {
-		postParams = strings.NewReader(params.Encode())
+		postBody = bytes.NewReader(reqBody)
 	}
 
-	req, err := http.NewRequest(method, rURL, postParams)
+	req, err := http.NewRequest(method, rURL, postBody)
 	if err != nil {
 		h.hLog.Printf("Request preparation failed: %v", err)
 		return resp, errors.New("request preparation failed")
@@ -95,7 +92,7 @@ func (h *httpClient) Do(method, rURL string, params url.Values, headers http.Hea
 
 	// If the request method is GET or DELETE, add the params as QueryString.
 	if method == http.MethodGet || method == http.MethodDelete {
-		req.URL.RawQuery = params.Encode()
+		req.URL.RawQuery = string(reqBody)
 	}
 
 	r, err := h.client.Do(req)
@@ -119,6 +116,15 @@ func (h *httpClient) Do(method, rURL string, params url.Values, headers http.Hea
 	}
 
 	return resp, nil
+}
+
+// DoRaw executes an HTTP request and returns the response.
+func (h *httpClient) Do(method, rURL string, params url.Values, headers http.Header) (HTTPResponse, error) {
+	if params == nil {
+		params = url.Values{}
+	}
+
+	return h.DoRaw(method, rURL, []byte(params.Encode()), headers)
 }
 
 // DoJSON makes an HTTP request and parses the JSON response.

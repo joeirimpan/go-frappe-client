@@ -119,6 +119,24 @@ func (c *Client) Do(httpMethod, frappeMethod string, params url.Values, headers 
 	)
 }
 
+// DoRaw proxy underlying http client do request
+func (c *Client) DoRaw(httpMethod, frappeMethod string, reqBody []byte, headers http.Header) (HTTPResponse, error) {
+	// Set custom headers
+	if c.authHeader != nil {
+		if headers == nil {
+			headers = make(http.Header)
+		}
+		headers.Set("Authorization", *c.authHeader)
+	}
+
+	return c.httpClient.DoRaw(
+		httpMethod,
+		c.baseURI+"api/method/"+frappeMethod,
+		reqBody,
+		headers,
+	)
+}
+
 // DoJSON proxy underlying http client doJSON request
 func (c *Client) DoJSON(httpMethod, frappeMethod string, params url.Values, headers http.Header, obj interface{}) (HTTPResponse, error) {
 	// Set custom headers
